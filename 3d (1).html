@@ -1,0 +1,2319 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>สุขสันต์วันเกิด น้องทิมมี่ 🎂 | ของขวัญ 3D สุดพิเศษ</title>
+
+  <!-- Google Fonts: Prompt & Kanit สำหรับภาษาไทยที่สวยงามและอ่านง่าย -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Three.js & OrbitControls ผ่าน CDN ที่เสถียร -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <style>
+    /* =====================================================================
+       1. การตั้งค่าพื้นฐานและพื้นหลังห้องมืดโทนม่วงดำ (Radial Gradient)
+       ===================================================================== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Prompt', 'Kanit', sans-serif;
+      /* พื้นหลังโทนม่วงดำ ไล่เฉดสีจากตรงกลางสว่างกว่าไปหาขอบที่มืดสนิท */
+      background: radial-gradient(circle at 50% 45%, #341852 0%, #1d0c33 42%, #0c0417 78%, #040108 100%);
+      color: #ffffff;
+      touch-action: none;
+    }
+
+    /* แสงฟุ้งนุ่มนวลตรงกลางฉากเสริมบรรยากาศห้องมืด */
+    .ambient-glow {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(circle at 50% 46%, rgba(236, 72, 153, 0.14) 0%, rgba(139, 92, 246, 0.08) 38%, rgba(0, 0, 0, 0.45) 100%);
+      z-index: 1;
+    }
+
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+      cursor: grab;
+    }
+
+    #canvas-container:active {
+      cursor: grabbing;
+    }
+
+    /* =====================================================================
+       2. UI Layer & Top Controls (การ์ดพับเก็บมุมซ้ายบน & ปุ่มเสียงมุมขวาบน)
+       ===================================================================== */
+    .ui-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    /* ปุ่มไอคอนกระดาษโน้ตที่พับเก็บไว้มุมซ้ายบน */
+    #folded-card-btn {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      z-index: 30;
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #ffffff 0%, #fdf2f8 100%);
+      color: #4a154b;
+      border: 2px solid rgba(244, 114, 182, 0.65);
+      border-radius: 16px;
+      padding: 10px 14px;
+      font-family: 'Prompt', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), 0 0 16px rgba(244, 114, 182, 0.35);
+      cursor: pointer;
+      transform-origin: top left;
+      transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease, box-shadow 0.25s ease;
+    }
+
+    #folded-card-btn.hidden-folded {
+      opacity: 0;
+      transform: scale(0.3) translate(-20px, -20px);
+      pointer-events: none;
+    }
+
+    #folded-card-btn:hover {
+      transform: translateY(-2px) scale(1.04);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55), 0 0 22px rgba(244, 114, 182, 0.55);
+    }
+
+    #folded-card-btn:active {
+      transform: scale(0.95);
+    }
+
+    .folded-paper-icon {
+      width: 24px;
+      height: 24px;
+      background: #fff;
+      border-radius: 4px;
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 0 0 1.5px #f472b6;
+      font-size: 14px;
+    }
+
+    /* ปุ่มเปิด/ปิดเสียง มุมขวาบน */
+    #sound-toggle-btn {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      z-index: 30;
+      pointer-events: auto;
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(28, 14, 46, 0.72);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      color: #f3e8ff;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+      transition: all 0.2s ease;
+    }
+
+    #sound-toggle-btn:hover {
+      background: rgba(58, 28, 92, 0.85);
+      transform: scale(1.06);
+    }
+
+    /* ข้อความแนะนำด้านบน/ล่างอย่างนุ่มนวล */
+    #hint-banner {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 15;
+      background: rgba(24, 11, 41, 0.75);
+      border: 1px solid rgba(244, 114, 182, 0.35);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      padding: 9px 20px;
+      border-radius: 999px;
+      font-size: 0.92rem;
+      color: #fce7f3;
+      text-align: center;
+      white-space: nowrap;
+      max-width: calc(100vw - 140px);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      transition: all 0.35s ease;
+    }
+
+    @media (max-width: 640px) {
+      #hint-banner {
+        top: 72px;
+        max-width: calc(100vw - 32px);
+        font-size: 0.84rem;
+        padding: 7px 16px;
+      }
+    }
+
+    /* =====================================================================
+       3. หน้าต่างกระดาษโน้ตอวยพรวันเกิด (Greeting Card Modal & Fold Animation)
+       ===================================================================== */
+    #greeting-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      background: rgba(7, 2, 14, 0.62);
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s ease;
+    }
+
+    #greeting-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .note-paper {
+      position: relative;
+      width: 100%;
+      max-width: 430px;
+      background: #ffffff;
+      color: #2d1b36;
+      border-radius: 18px;
+      padding: 34px 28px 28px;
+      box-shadow:
+        0 25px 60px rgba(0, 0, 0, 0.65),
+        0 0 0 1px rgba(244, 114, 182, 0.25),
+        inset 0 0 30px rgba(253, 242, 248, 0.8);
+      /* ลายเส้นสมุดโน้ตบางๆ สบายตา */
+      background-image: repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 31px,
+        rgba(244, 114, 182, 0.14) 32px
+      );
+      transform-origin: center center;
+      transition: transform 0.55s cubic-bezier(0.32, 0.94, 0.6, 1), opacity 0.45s ease;
+      cursor: pointer;
+    }
+
+    /* เทปตกแต่งด้านบนกระดาษโน้ต */
+    .note-paper::before {
+      content: '';
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%) rotate(-2deg);
+      width: 110px;
+      height: 26px;
+      background: rgba(244, 114, 182, 0.45);
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    }
+
+    /* แอนิเมชันพับกระดาษลอยไปมุมซ้ายบน */
+    .note-paper.folding-to-corner {
+      transform: translate(-42vw, -42vh) scale(0.08) rotate(-25deg) skewX(12deg);
+      opacity: 0;
+    }
+
+    .note-header {
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: #db2777;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .note-body {
+      font-size: 1.18rem;
+      line-height: 1.85;
+      font-weight: 500;
+      color: #3b1d4a;
+      margin-bottom: 22px;
+      word-break: keep-all;
+    }
+
+    .note-footer-tip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.82rem;
+      color: #9d174d;
+      background: #fdf2f8;
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: 1px dashed #f9a8d4;
+    }
+
+    /* =====================================================================
+       4. หน้าต่างข้อมูลของเล่น & ปุ่มควบคุมโหมดสำรวจ (Inspection Mode UI)
+       ===================================================================== */
+    #toy-info-card {
+      position: fixed;
+      top: 72px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-16px);
+      z-index: 25;
+      width: calc(100vw - 32px);
+      max-width: 440px;
+      background: rgba(25, 12, 43, 0.82);
+      border: 1px solid rgba(244, 114, 182, 0.42);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 20px;
+      padding: 14px 20px;
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    #toy-info-card.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    #toy-info-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #f9a8d4;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #toy-info-desc {
+      font-size: 0.9rem;
+      line-height: 1.5;
+      color: #e9d5ff;
+      font-weight: 300;
+    }
+
+    /* ปุ่ม "วางลง" มุมซ้ายล่าง (เหมือนกันทุกชิ้น) */
+    #put-down-btn {
+      position: fixed;
+      bottom: 22px;
+      left: 20px;
+      z-index: 30;
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 13px 22px;
+      border-radius: 18px;
+      border: 1.5px solid rgba(255, 255, 255, 0.28);
+      background: linear-gradient(135deg, rgba(55, 30, 88, 0.92) 0%, rgba(30, 14, 52, 0.95) 100%);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      color: #ffffff;
+      font-family: 'Prompt', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5);
+      cursor: pointer;
+      opacity: 0;
+      transform: translateY(25px);
+      pointer-events: none;
+      transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    #put-down-btn.visible {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    #put-down-btn:hover {
+      background: linear-gradient(135deg, #581c87 0%, #3b0764 100%);
+      transform: translateY(-2px);
+    }
+
+    #put-down-btn:active {
+      transform: scale(0.95);
+    }
+
+    /* แผงปุ่มแอ็กชันพิเศษ มุมขวาล่าง */
+    #right-action-container {
+      position: fixed;
+      bottom: 22px;
+      right: 20px;
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+      opacity: 0;
+      transform: translateY(25px);
+      pointer-events: none;
+      transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    #right-action-container.visible {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .action-main-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 13px 22px;
+      border-radius: 18px;
+      border: none;
+      background: linear-gradient(135deg, #ec4899 0%, #db2777 55%, #be185d 100%);
+      color: #ffffff;
+      font-family: 'Prompt', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      box-shadow: 0 10px 28px rgba(219, 39, 119, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+      cursor: pointer;
+      transition: all 0.22s ease;
+    }
+
+    .action-main-btn:hover {
+      transform: translateY(-2px) scale(1.03);
+      box-shadow: 0 14px 32px rgba(236, 72, 153, 0.6);
+    }
+
+    .action-main-btn:active {
+      transform: scale(0.95);
+    }
+
+    .action-main-btn.active-state {
+      background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+      box-shadow: 0 10px 28px rgba(234, 88, 12, 0.55);
+    }
+
+    /* แผงควบคุมการหมุนรูบิคที่มุมขวาล่าง */
+    .rubik-controls-box {
+      background: rgba(24, 11, 41, 0.88);
+      border: 1px solid rgba(244, 114, 182, 0.4);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 18px;
+      padding: 12px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 250px;
+    }
+
+    .rubik-row {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .rubik-mini-btn {
+      padding: 7px 11px;
+      border-radius: 11px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      font-family: 'Prompt', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .rubik-mini-btn:hover {
+      background: rgba(236, 72, 153, 0.45);
+      border-color: #f472b6;
+    }
+
+    .rubik-mini-btn:active {
+      transform: scale(0.92);
+    }
+
+    .rubik-dir-btn {
+      background: rgba(168, 85, 247, 0.35);
+      border-color: rgba(192, 132, 252, 0.55);
+    }
+
+    .rubik-reset-btn {
+      background: rgba(239, 68, 68, 0.28);
+      border-color: rgba(248, 113, 113, 0.45);
+      color: #fecaca;
+    }
+
+    /* แถบเมนูลัดเลือกของเล่นด้านล่างเมื่อเปิดกล่องแล้ว (ช่วยให้กดง่ายบนมือถือ) */
+    #toy-quick-bar {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(90px);
+      z-index: 20;
+      display: flex;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 20px;
+      background: rgba(24, 11, 41, 0.78);
+      border: 1px solid rgba(244, 114, 182, 0.35);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+      max-width: calc(100vw - 24px);
+      overflow-x: auto;
+    }
+
+    #toy-quick-bar.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
+    }
+
+    .quick-toy-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 13px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(255, 255, 255, 0.08);
+      color: #fdf2f8;
+      font-family: 'Prompt', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 500;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .quick-toy-chip:hover {
+      background: rgba(236, 72, 153, 0.38);
+      border-color: #f472b6;
+      transform: translateY(-2px);
+    }
+  </style>
+</head>
+<body>
+  <!-- แสงบรรยากาศนุ่มนวลกลางห้อง -->
+  <div class="ambient-glow"></div>
+
+  <!-- พื้นที่แสดงผล 3D -->
+  <div id="canvas-container"></div>
+
+  <!-- เลเยอร์ UI -->
+  <div class="ui-layer">
+    <!-- ปุ่มการ์ดอวยพรที่พับเก็บไว้มุมซ้ายบน -->
+    <button id="folded-card-btn" class="hidden-folded" title="เปิดอ่านการ์ดอวยพร">
+      <span class="folded-paper-icon">💌</span>
+      <span>การ์ดถึงทิมมี่</span>
+    </button>
+
+    <!-- ปุ่มเปิด/ปิดเสียง มุมขวาบน -->
+    <button id="sound-toggle-btn" title="เปิด/ปิดเสียงเอฟเฟกต์">🔊</button>
+
+    <!-- ข้อความแนะนำสถานะปัจจุบัน -->
+    <div id="hint-banner">🎁 แตะที่กล่องของขวัญสีชมพูเพื่อเปิด หรืออ่านการ์ดด้านข้าง</div>
+
+    <!-- การ์ดแสดงรายละเอียดของเล่นในโหมดสำรวจ -->
+    <div id="toy-info-card">
+      <div id="toy-info-title">ชื่อของเล่น</div>
+      <div id="toy-info-desc">คำอธิบายของเล่น</div>
+    </div>
+
+    <!-- แถบเลือกของเล่นด่วนเมื่อเปิดกล่องแล้ว -->
+    <div id="toy-quick-bar">
+      <button class="quick-toy-chip" data-toy="helicopter">🚁 เฮลิคอปเตอร์</button>
+      <button class="quick-toy-chip" data-toy="tank">🪖 รถถัง</button>
+      <button class="quick-toy-chip" data-toy="rubik">🧊 รูบิค</button>
+      <button class="quick-toy-chip" data-toy="dino">🦕 ไดโนเสาร์</button>
+    </div>
+
+    <!-- ปุ่มวางลง มุมซ้ายล่าง (แสดงในโหมดสำรวจของเล่นทุกชิ้น) -->
+    <button id="put-down-btn">⬇️ วางลง</button>
+
+    <!-- แผงปุ่มแอ็กชันพิเศษ มุมขวาล่าง -->
+    <div id="right-action-container"></div>
+  </div>
+
+  <!-- หน้าต่างกระดาษโน้ตคำอวยพร (คลิกหน้าจอเพื่อพับเก็บไปมุมซ้ายบน) -->
+  <div id="greeting-overlay">
+    <div class="note-paper" id="note-paper-card">
+      <div class="note-header">ถึง น้องทิมมี่ 🎂</div>
+      <div class="note-body">
+        “แก่ขึ้นอีกปีแล้วนะน้องพี่<br />
+        เป็นเด็กดีไปนานๆน้าาาาา”
+      </div>
+      <div class="note-footer-tip">👆 แตะที่หน้าจอเพื่อพับเก็บไว้มุมซ้ายบน</div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * =========================================================================
+     * 1. ระบบสังเคราะห์เสียงด้วย Web Audio API (ไม่ต้องพึ่งไฟล์เสียงภายนอก)
+     * =========================================================================
+     */
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+        this.jetOsc = null;
+        this.jetGain = null;
+        this.jetNoiseNode = null;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) {
+            this.ctx = new AudioCtx();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      toggleMute() {
+        this.muted = !this.muted;
+        if (this.muted) {
+          this.stopJetLoop();
+        }
+        return this.muted;
+      }
+
+      // เสียงเปิดกล่องของขวัญ (ทำนองระฆังวิบวับ)
+      playBoxOpen() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+        const now = this.ctx.currentTime;
+
+        notes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+
+          gain.gain.setValueAtTime(0.001, now + idx * 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.18, now + idx * 0.08 + 0.03);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.08 + 0.55);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + idx * 0.08);
+          osc.stop(now + idx * 0.08 + 0.6);
+        });
+      }
+
+      // เสียงกระดาษโน้ตเปิด/พับเก็บ
+      playPaperSound(isFolding = false) {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const duration = 0.22;
+        const bufferSize = this.ctx.sampleRate * duration;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.sin((i / bufferSize) * Math.PI);
+        }
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(isFolding ? 1600 : 1100, now);
+        filter.Q.value = 1.4;
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.16, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+        noise.start(now);
+      }
+
+      // เสียงเลือกหรือวางของเล่น
+      playPop(up = true) {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(up ? 320 : 480, now);
+        osc.frequency.exponentialRampToValueAtTime(up ? 640 : 240, now + 0.14);
+
+        gain.gain.setValueAtTime(0.16, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.16);
+      }
+
+      // เสียงไอพ่นเฮลิคอปเตอร์ต่อเนื่อง
+      startJetLoop() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx || this.jetOsc) return;
+
+        const now = this.ctx.currentTime;
+        // เสียงเทอร์ไบน์ความถี่สูงต่ำผสมกัน
+        const osc = this.ctx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(95, now);
+        osc.frequency.exponentialRampToValueAtTime(165, now + 0.4);
+
+        // เสียงลมไอพ่น (White Noise Filtered)
+        const bufferSize = this.ctx.sampleRate * 2;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+        noise.loop = true;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(750, now);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.exponentialRampToValueAtTime(0.14, now + 0.25);
+
+        osc.connect(filter);
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        noise.start(now);
+
+        this.jetOsc = osc;
+        this.jetNoiseNode = noise;
+        this.jetGain = gain;
+      }
+
+      stopJetLoop() {
+        if (this.jetOsc && this.ctx) {
+          try {
+            const now = this.ctx.currentTime;
+            this.jetGain.gain.setTargetAtTime(0.0001, now, 0.08);
+            const oldOsc = this.jetOsc;
+            const oldNoise = this.jetNoiseNode;
+            setTimeout(() => {
+              try { oldOsc.stop(); oldNoise.stop(); } catch (e) {}
+            }, 250);
+          } catch (e) {}
+        }
+        this.jetOsc = null;
+        this.jetNoiseNode = null;
+        this.jetGain = null;
+      }
+
+      // เสียงยิงปืนใหญ่รถถัง
+      playTankCannon() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        // แรงกระแทกเบส (Sub-bass thump)
+        const osc = this.ctx.createOscillator();
+        const oscGain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(155, now);
+        osc.frequency.exponentialRampToValueAtTime(32, now + 0.38);
+        oscGain.gain.setValueAtTime(0.42, now);
+        oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+        osc.connect(oscGain);
+        oscGain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.45);
+
+        // เสียงระเบิดแตกตัว (Noise blast)
+        const duration = 0.45;
+        const bufferSize = this.ctx.sampleRate * duration;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.12));
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1200, now);
+        filter.frequency.exponentialRampToValueAtTime(180, now + duration);
+
+        const nGain = this.ctx.createGain();
+        nGain.gain.setValueAtTime(0.32, now);
+        nGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        noise.connect(filter);
+        filter.connect(nGain);
+        nGain.connect(this.ctx.destination);
+        noise.start(now);
+      }
+
+      // เสียงบิดรูบิค (Click-Clack)
+      playRubikTwist() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(520, now);
+        osc.frequency.exponentialRampToValueAtTime(190, now + 0.055);
+
+        gain.gain.setValueAtTime(0.11, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.065);
+      }
+
+      // เสียงไดโนเสาร์คอยาวคำรามน่ารักๆ
+      playDinoRoar() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const filter = this.ctx.createBiquadFilter();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sawtooth';
+        // ไล่ระดับเสียงน่ารักๆ ขึ้นแล้วลง
+        osc.frequency.setValueAtTime(190, now);
+        osc.frequency.linearRampToValueAtTime(340, now + 0.22);
+        osc.frequency.linearRampToValueAtTime(280, now + 0.55);
+        osc.frequency.exponentialRampToValueAtTime(160, now + 0.85);
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(850, now);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.18, now + 0.1);
+        gain.gain.setValueAtTime(0.16, now + 0.55);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.92);
+      }
+    }
+
+    const sound = new SoundEngine();
+
+    /**
+     * =========================================================================
+     * 2. ตั้งค่าฉาก Three.js, แสง, กล้อง และ OrbitControls
+     * =========================================================================
+     */
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x110620, 0.032);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 5.4, 9.2);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.enablePan = false;
+    controls.minDistance = 4.5;
+    controls.maxDistance = 16;
+    controls.maxPolarAngle = Math.PI * 0.47; // ไม่ให้ทะลุพื้น
+    controls.target.set(0, 0.8, 0);
+
+    // จัดแสงไฟในห้องมืดโทนม่วงดำ
+    const hemiLight = new THREE.HemisphereLight(0xf3e8ff, 0x1a092e, 0.65);
+    scene.add(hemiLight);
+
+    const mainSpot = new THREE.SpotLight(0xfff5fb, 1.45);
+    mainSpot.position.set(3.5, 11, 5.5);
+    mainSpot.angle = Math.PI / 4.2;
+    mainSpot.penumbra = 0.65;
+    mainSpot.decay = 1.4;
+    mainSpot.distance = 32;
+    mainSpot.castShadow = true;
+    mainSpot.shadow.mapSize.width = 1024;
+    mainSpot.shadow.mapSize.height = 1024;
+    mainSpot.shadow.bias = -0.0005;
+    scene.add(mainSpot);
+
+    // แสงขอบสีชมพูอมม่วงเพิ่มมิติให้โมเดล 3D
+    const rimLightLeft = new THREE.PointLight(0xd946ef, 0.85, 18);
+    rimLightLeft.position.set(-6, 4.5, -4);
+    scene.add(rimLightLeft);
+
+    const rimLightRight = new THREE.PointLight(0x818cf8, 0.7, 18);
+    rimLightRight.position.set(6, 3.5, -3);
+    scene.add(rimLightRight);
+
+    // พื้นห้องมืดรับเงา (Shadow-receiving Floor)
+    const floorGeo = new THREE.CircleGeometry(18, 64);
+    const floorMat = new THREE.MeshStandardMaterial({
+      color: 0x160926,
+      roughness: 0.88,
+      metalness: 0.08
+    });
+    const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+    floorMesh.rotation.x = -Math.PI / 2;
+    floorMesh.receiveShadow = true;
+    scene.add(floorMesh);
+
+    // ละอองแสงระยิบระยับลอยจางๆ ในห้องมืด
+    const ambientParticlesCount = 90;
+    const ambGeo = new THREE.BufferGeometry();
+    const ambPos = new Float32Array(ambientParticlesCount * 3);
+    for (let i = 0; i < ambientParticlesCount; i++) {
+      ambPos[i * 3] = (Math.random() - 0.5) * 16;
+      ambPos[i * 3 + 1] = Math.random() * 7 + 0.3;
+      ambPos[i * 3 + 2] = (Math.random() - 0.5) * 16;
+    }
+    ambGeo.setAttribute('position', new THREE.BufferAttribute(ambPos, 3));
+    const ambMat = new THREE.PointsMaterial({
+      color: 0xf9a8d4,
+      size: 0.08,
+      transparent: true,
+      opacity: 0.65
+    });
+    const ambientSparkles = new THREE.Points(ambGeo, ambMat);
+    scene.add(ambientSparkles);
+
+    /**
+     * =========================================================================
+     * 3. สร้างกล่องของขวัญ 3D ทรงสี่เหลี่ยมผืนผ้า สีชมพูคลาสสิคเรียบ + ริบบิ้นเล็กๆ
+     * =========================================================================
+     */
+    const giftBoxGroup = new THREE.Group();
+    scene.add(giftBoxGroup);
+
+    // ขนาดกล่องสี่เหลี่ยมผืนผ้า (Rectangular Prism)
+    const boxW = 5.0;
+    const boxH = 2.0;
+    const boxD = 3.4;
+    const wallT = 0.14;
+
+    // วัสดุสีชมพูคลาสสิคเรียบ ไม่มีลวดลาย
+    const classicPinkMat = new THREE.MeshStandardMaterial({
+      color: 0xf472b6, // Classic Rose Pink
+      roughness: 0.48,
+      metalness: 0.05
+    });
+
+    const innerPinkMat = new THREE.MeshStandardMaterial({
+      color: 0xfce7f3, // ด้านในกล่องสีชมพูอ่อนนวล
+      roughness: 0.7
+    });
+
+    // ริบบิ้นเส้นเล็กๆ สีขาวครีมมุก
+    const ribbonMat = new THREE.MeshStandardMaterial({
+      color: 0xfff8fb,
+      roughness: 0.32,
+      metalness: 0.12
+    });
+
+    // ตัวกล่องด้านล่าง (เปิดด้านบนเพื่อให้วางของเล่นข้างในได้จริง)
+    const boxBaseGroup = new THREE.Group();
+    giftBoxGroup.add(boxBaseGroup);
+
+    const bottomPanel = new THREE.Mesh(new THREE.BoxGeometry(boxW, wallT, boxD), classicPinkMat);
+    bottomPanel.position.y = wallT / 2;
+    bottomPanel.castShadow = true;
+    bottomPanel.receiveShadow = true;
+    boxBaseGroup.add(bottomPanel);
+
+    // แผ่นรองก้นกล่องด้านใน
+    const innerFloor = new THREE.Mesh(new THREE.BoxGeometry(boxW - wallT * 2, 0.02, boxD - wallT * 2), innerPinkMat);
+    innerFloor.position.y = wallT + 0.01;
+    innerFloor.receiveShadow = true;
+    boxBaseGroup.add(innerFloor);
+
+    // ผนังกล่อง 4 ด้าน
+    const frontWall = new THREE.Mesh(new THREE.BoxGeometry(boxW, boxH, wallT), classicPinkMat);
+    frontWall.position.set(0, boxH / 2, boxD / 2 - wallT / 2);
+    frontWall.castShadow = true;
+    frontWall.receiveShadow = true;
+    boxBaseGroup.add(frontWall);
+
+    const backWall = new THREE.Mesh(new THREE.BoxGeometry(boxW, boxH, wallT), classicPinkMat);
+    backWall.position.set(0, boxH / 2, -boxD / 2 + wallT / 2);
+    backWall.castShadow = true;
+    backWall.receiveShadow = true;
+    boxBaseGroup.add(backWall);
+
+    const leftWall = new THREE.Mesh(new THREE.BoxGeometry(wallT, boxH, boxD - wallT * 2), classicPinkMat);
+    leftWall.position.set(-boxW / 2 + wallT / 2, boxH / 2, 0);
+    leftWall.castShadow = true;
+    leftWall.receiveShadow = true;
+    boxBaseGroup.add(leftWall);
+
+    const rightWall = new THREE.Mesh(new THREE.BoxGeometry(wallT, boxH, boxD - wallT * 2), classicPinkMat);
+    rightWall.position.set(boxW / 2 - wallT / 2, boxH / 2, 0);
+    rightWall.castShadow = true;
+    rightWall.receiveShadow = true;
+    boxBaseGroup.add(rightWall);
+
+    // ริบบิ้นเส้นเล็กๆ รัดรอบตัวกล่อง (ด้านหน้า-หลัง และ ซ้าย-ขวา)
+    const ribbonThinW = 0.22;
+    const baseRibZ = new THREE.Mesh(new THREE.BoxGeometry(ribbonThinW, boxH + 0.02, boxD + 0.03), ribbonMat);
+    baseRibZ.position.set(0, boxH / 2, 0);
+    boxBaseGroup.add(baseRibZ);
+
+    const baseRibX = new THREE.Mesh(new THREE.BoxGeometry(boxW + 0.03, boxH + 0.02, ribbonThinW), ribbonMat);
+    baseRibX.position.set(0, boxH / 2, 0);
+    boxBaseGroup.add(baseRibX);
+
+    // ฝากล่องของขวัญ (แยกชิ้นเพื่อเปิดได้)
+    const lidGroup = new THREE.Group();
+    const lidW = boxW + 0.22;
+    const lidH = 0.44;
+    const lidD = boxD + 0.22;
+    lidGroup.position.set(0, boxH - 0.08, 0);
+    giftBoxGroup.add(lidGroup);
+
+    const lidTop = new THREE.Mesh(new THREE.BoxGeometry(lidW, 0.12, lidD), classicPinkMat);
+    lidTop.position.y = lidH / 2;
+    lidTop.castShadow = true;
+    lidTop.receiveShadow = true;
+    lidGroup.add(lidTop);
+
+    const lidRimF = new THREE.Mesh(new THREE.BoxGeometry(lidW, lidH, 0.1), classicPinkMat);
+    lidRimF.position.set(0, 0, lidD / 2 - 0.05);
+    lidRimF.castShadow = true;
+    lidGroup.add(lidRimF);
+
+    const lidRimB = new THREE.Mesh(new THREE.BoxGeometry(lidW, lidH, 0.1), classicPinkMat);
+    lidRimB.position.set(0, 0, -lidD / 2 + 0.05);
+    lidRimB.castShadow = true;
+    lidGroup.add(lidRimB);
+
+    const lidRimL = new THREE.Mesh(new THREE.BoxGeometry(0.1, lidH, lidD - 0.2), classicPinkMat);
+    lidRimL.position.set(-lidW / 2 + 0.05, 0, 0);
+    lidRimL.castShadow = true;
+    lidGroup.add(lidRimL);
+
+    const lidRimR = new THREE.Mesh(new THREE.BoxGeometry(0.1, lidH, lidD - 0.2), classicPinkMat);
+    lidRimR.position.set(lidW / 2 - 0.05, 0, 0);
+    lidRimR.castShadow = true;
+    lidGroup.add(lidRimR);
+
+    // ริบบิ้นเล็กๆ บนฝา + โบว์น่ารักๆ
+    const ribbonBowGroup = new THREE.Group();
+    lidGroup.add(ribbonBowGroup);
+
+    const lidRibZ = new THREE.Mesh(new THREE.BoxGeometry(ribbonThinW, lidH + 0.04, lidD + 0.03), ribbonMat);
+    lidRibZ.position.set(0, 0.01, 0);
+    ribbonBowGroup.add(lidRibZ);
+
+    const lidRibX = new THREE.Mesh(new THREE.BoxGeometry(lidW + 0.03, lidH + 0.04, ribbonThinW), ribbonMat);
+    lidRibX.position.set(0, 0.01, 0);
+    ribbonBowGroup.add(lidRibX);
+
+    // โบว์เล็กๆ ตรงกลางฝา
+    const bowCenterY = lidH / 2 + 0.14;
+    const bowKnot = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 16), ribbonMat);
+    bowKnot.position.set(0, bowCenterY, 0);
+    ribbonBowGroup.add(bowKnot);
+
+    const bowLoopGeo = new THREE.TorusGeometry(0.26, 0.065, 12, 24);
+    const bowLoopL = new THREE.Mesh(bowLoopGeo, ribbonMat);
+    bowLoopL.position.set(-0.24, bowCenterY + 0.05, 0);
+    bowLoopL.rotation.set(0.35, 0.2, 0.45);
+    ribbonBowGroup.add(bowLoopL);
+
+    const bowLoopR = new THREE.Mesh(bowLoopGeo, ribbonMat);
+    bowLoopR.position.set(0.24, bowCenterY + 0.05, 0);
+    bowLoopR.rotation.set(0.35, -0.2, -0.45);
+    ribbonBowGroup.add(bowLoopR);
+
+    // หางริบบิ้นเล็กๆ
+    const tailGeo = new THREE.BoxGeometry(0.14, 0.03, 0.45);
+    const tailL = new THREE.Mesh(tailGeo, ribbonMat);
+    tailL.position.set(-0.18, lidH / 2 + 0.07, 0.28);
+    tailL.rotation.y = -0.42;
+    ribbonBowGroup.add(tailL);
+
+    const tailR = new THREE.Mesh(tailGeo, ribbonMat);
+    tailR.position.set(0.18, lidH / 2 + 0.07, 0.28);
+    tailR.rotation.y = 0.42;
+    ribbonBowGroup.add(tailR);
+
+    // กำหนด userData เพื่อตรวจจับการคลิกกล่องของขวัญ
+    giftBoxGroup.traverse((child) => {
+      if (child.isMesh) {
+        child.userData.interactType = 'giftbox';
+      }
+    });
+
+    /**
+     * =========================================================================
+     * 4. การ์ดอวยพรกระดาษโน้ตสีขาว วางอยู่ข้างๆ กล่องของขวัญ
+     * =========================================================================
+     */
+    const floorCardGroup = new THREE.Group();
+    floorCardGroup.position.set(3.55, 0.03, 1.35);
+    floorCardGroup.rotation.y = -0.32;
+    scene.add(floorCardGroup);
+
+    // ตัวกระดาษโน้ตสีขาววางบนพื้น
+    const cardPaperMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(1.15, 0.04, 1.45),
+      new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 0.55,
+        emissive: 0xfce7f3,
+        emissiveIntensity: 0.18
+      })
+    );
+    cardPaperMesh.castShadow = true;
+    cardPaperMesh.receiveShadow = true;
+    floorCardGroup.add(cardPaperMesh);
+
+    // เส้นตกแต่งเล็กๆ บนกระดาษโน้ต 3D
+    const lineMat = new THREE.MeshBasicMaterial({ color: 0xf472b6 });
+    for (let i = 0; i < 4; i++) {
+      const line = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.008, 0.035), lineMat);
+      line.position.set(0, 0.024, -0.32 + i * 0.22);
+      floorCardGroup.add(line);
+    }
+
+    // สติกเกอร์หัวใจชมพูเล็กๆ มุมการ์ด
+    const stickerMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.14, 0.14, 0.015, 20),
+      new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.3 })
+    );
+    stickerMesh.position.set(0.32, 0.025, -0.46);
+    floorCardGroup.add(stickerMesh);
+
+    floorCardGroup.traverse((child) => {
+      if (child.isMesh) {
+        child.userData.interactType = 'card';
+      }
+    });
+
+    /**
+     * =========================================================================
+     * 5. สร้างโมเดล 3D ของเล่นทั้ง 4 ชิ้นภายในกล่อง (Procedural 3D)
+     * =========================================================================
+     */
+    const toysData = {
+      helicopter: {
+        id: 'helicopter',
+        name: '🚁 เฮลิคอปเตอร์ไอพ่น',
+        desc: 'เฮลิคอปเตอร์สุดเท่พร้อมใบพัดคู่และเครื่องยนต์ไอพ่นด้านหลัง ลองกด "เปิดไอพ่น" ที่มุมขวาล่างดูสิ!',
+        boxPos: new THREE.Vector3(-1.35, 0.65, -0.65),
+        boxRot: new THREE.Euler(0, 0.45, 0),
+        boxScale: 0.68,
+        inspectScale: 1.55,
+        mesh: null,
+        refs: {}
+      },
+      tank: {
+        id: 'tank',
+        name: '🪖 รถถังประจัญบาน',
+        desc: 'รถถังเกราะแกร่งพร้อมป้อมปืนหมุนได้และปืนใหญ่พลังสูง กด "ยิงปืนใหญ่" ที่มุมขวาล่างเพื่อทดสอบยิง!',
+        boxPos: new THREE.Vector3(1.35, 0.55, -0.65),
+        boxRot: new THREE.Euler(0, -0.55, 0),
+        boxScale: 0.68,
+        inspectScale: 1.55,
+        mesh: null,
+        refs: {}
+      },
+      rubik: {
+        id: 'rubik',
+        name: '🧊 ลูกบาศก์รูบิค 3x3',
+        desc: 'รูบิคสีสดใสที่แก้ครบทุกหน้าแล้ว! กดปุ่มแถวที่มุมขวาล่าง หรือแตะ/ปัดบนลูกรูบิคเพื่อบิดเล่นได้จริง',
+        boxPos: new THREE.Vector3(-1.35, 0.72, 0.78),
+        boxRot: new THREE.Euler(0.22, 0.52, -0.15),
+        boxScale: 0.58,
+        inspectScale: 1.38,
+        mesh: null,
+        refs: {}
+      },
+      dino: {
+        id: 'dino',
+        name: '🦕 ไดโนเสาร์คอยาว',
+        desc: 'เจ้าแบรคิโอซอรัสคอยาวจอมใจดี กดปุ่ม "คำราม & ยืดคอ" ที่มุมขวาล่างเพื่อดูน้องยืดคอทักทาย!',
+        boxPos: new THREE.Vector3(1.35, 0.76, 0.78),
+        boxRot: new THREE.Euler(0, -0.65, 0),
+        boxScale: 0.66,
+        inspectScale: 1.48,
+        mesh: null,
+        refs: {}
+      }
+    };
+
+    // -------------------------------------------------------------------------
+    // 5.1 โมเดลเฮลิคอปเตอร์ (Helicopter)
+    // -------------------------------------------------------------------------
+    function buildHelicopter() {
+      const group = new THREE.Group();
+      const bodyMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.35, metalness: 0.2 });
+      const stripeMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.3 });
+      const glassMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.15, metalness: 0.6 });
+      const darkMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5, metalness: 0.4 });
+
+      // ลำตัวหลัก
+      const fuselage = new THREE.Mesh(new THREE.SphereGeometry(0.62, 24, 20), bodyMat);
+      fuselage.scale.set(1.35, 0.88, 0.85);
+      fuselage.castShadow = true;
+      group.add(fuselage);
+
+      // กระจกห้องนักบินด้านหน้า
+      const cockpit = new THREE.Mesh(new THREE.SphereGeometry(0.54, 20, 16), glassMat);
+      cockpit.position.set(0.32, 0.08, 0);
+      cockpit.scale.set(1.05, 0.82, 0.78);
+      group.add(cockpit);
+
+      // แถบคาดสีเหลือง
+      const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.16, 24), stripeMat);
+      stripe.rotation.z = Math.PI / 2;
+      stripe.scale.set(0.88, 1, 0.86);
+      group.add(stripe);
+
+      // หางเฮลิคอปเตอร์
+      const tailBoom = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.24, 1.35, 16), bodyMat);
+      tailBoom.rotation.z = Math.PI / 2;
+      tailBoom.position.set(-1.12, 0.12, 0);
+      tailBoom.castShadow = true;
+      group.add(tailBoom);
+
+      // แพนหางดิ่ง
+      const fin = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.52, 0.07), stripeMat);
+      fin.position.set(-1.72, 0.28, 0);
+      fin.rotation.z = 0.28;
+      group.add(fin);
+
+      // ใบพัดหาง
+      const tailRotor = new THREE.Group();
+      tailRotor.position.set(-1.74, 0.24, 0.1);
+      const tBlade1 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.46, 0.02), darkMat);
+      const tBlade2 = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.06, 0.02), darkMat);
+      tailRotor.add(tBlade1, tBlade2);
+      group.add(tailRotor);
+
+      // ใบพัดหลักด้านบน
+      const rotorMast = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.26, 12), darkMat);
+      rotorMast.position.set(0, 0.58, 0);
+      group.add(rotorMast);
+
+      const mainRotor = new THREE.Group();
+      mainRotor.position.set(0, 0.7, 0);
+      const bladeGeo = new THREE.BoxGeometry(2.55, 0.025, 0.13);
+      const blade1 = new THREE.Mesh(bladeGeo, darkMat);
+      const blade2 = new THREE.Mesh(bladeGeo, darkMat);
+      blade2.rotation.y = Math.PI / 2;
+      const rotorCap = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 12), stripeMat);
+      mainRotor.add(blade1, blade2, rotorCap);
+      group.add(mainRotor);
+
+      // ขาสกีลงจอด
+      [-0.36, 0.36].forEach((zPos) => {
+        const skid = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.45, 10), darkMat);
+        skid.rotation.z = Math.PI / 2;
+        skid.position.set(0.08, -0.62, zPos);
+        group.add(skid);
+
+        [-0.32, 0.35].forEach((xPos) => {
+          const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.32, 8), darkMat);
+          strut.position.set(xPos, -0.48, zPos * 0.85);
+          strut.rotation.x = zPos > 0 ? -0.25 : 0.25;
+          group.add(strut);
+        });
+      });
+
+      // ท่อไอพ่นคู่ด้านหลัง + เปลวไฟไอพ่น
+      const jetFlames = [];
+      [-0.25, 0.25].forEach((zPos) => {
+        const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 0.34, 16), darkMat);
+        nozzle.rotation.z = Math.PI / 2;
+        nozzle.position.set(-0.62, 0.18, zPos);
+        group.add(nozzle);
+
+        // กรวยเปลวไฟไอพ่น (ซ่อนไว้จนกว่าจะกดเปิดไอพ่น)
+        const flameGroup = new THREE.Group();
+        flameGroup.position.set(-0.82, 0.18, zPos);
+        flameGroup.visible = false;
+
+        const outerFlame = new THREE.Mesh(
+          new THREE.ConeGeometry(0.14, 0.85, 16),
+          new THREE.MeshBasicMaterial({ color: 0xf97316, transparent: true, opacity: 0.88 })
+        );
+        outerFlame.rotation.z = Math.PI / 2;
+        outerFlame.position.x = -0.42;
+
+        const innerFlame = new THREE.Mesh(
+          new THREE.ConeGeometry(0.08, 0.55, 16),
+          new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.95 })
+        );
+        innerFlame.rotation.z = Math.PI / 2;
+        innerFlame.position.x = -0.26;
+
+        flameGroup.add(outerFlame, innerFlame);
+        group.add(flameGroup);
+        jetFlames.push(flameGroup);
+      });
+
+      toysData.helicopter.mesh = group;
+      toysData.helicopter.refs = { mainRotor, tailRotor, jetFlames, jetActive: false };
+      return group;
+    }
+
+    // -------------------------------------------------------------------------
+    // 5.2 โมเดลรถถัง (Tank)
+    // -------------------------------------------------------------------------
+    function buildTank() {
+      const group = new THREE.Group();
+      const armorMat = new THREE.MeshStandardMaterial({ color: 0x4d7c0f, roughness: 0.5, metalness: 0.2 });
+      const camoMat = new THREE.MeshStandardMaterial({ color: 0x365314, roughness: 0.55 });
+      const trackMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.7 });
+      const goldMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.3, metalness: 0.5 });
+
+      // ตัวถังรถถัง
+      const hull = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.44, 1.05), armorMat);
+      hull.position.y = 0.05;
+      hull.castShadow = true;
+      group.add(hull);
+
+      const frontSlope = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.34, 1.02), camoMat);
+      frontSlope.position.set(0.85, 0.02, 0);
+      frontSlope.rotation.z = -0.45;
+      group.add(frontSlope);
+
+      // ตีนตะขาบซ้าย-ขวา
+      [-0.6, 0.6].forEach((zPos) => {
+        const trackFrame = new THREE.Mesh(new THREE.BoxGeometry(1.88, 0.34, 0.26), trackMat);
+        trackFrame.position.set(0, -0.14, zPos);
+        trackFrame.castShadow = true;
+        group.add(trackFrame);
+
+        for (let i = -3; i <= 3; i++) {
+          const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.28, 14), goldMat);
+          wheel.rotation.x = Math.PI / 2;
+          wheel.position.set(i * 0.26, -0.15, zPos);
+          group.add(wheel);
+        }
+      });
+
+      // ป้อมปืน + ลำกล้องปืนใหญ่ (สามารถถอยร่นตามแรงดีดได้)
+      const turretGroup = new THREE.Group();
+      turretGroup.position.set(-0.08, 0.44, 0);
+      group.add(turretGroup);
+
+      const turretBody = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.56, 0.36, 16), camoMat);
+      turretBody.castShadow = true;
+      turretGroup.add(turretBody);
+
+      const hatch = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.12, 12), goldMat);
+      hatch.position.set(-0.14, 0.22, 0.14);
+      turretGroup.add(hatch);
+
+      // ชุดกระบอกปืนใหญ่ (Barrel Assembly)
+      const barrelGroup = new THREE.Group();
+      barrelGroup.position.set(0.45, 0.03, 0);
+      turretGroup.add(barrelGroup);
+
+      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.085, 1.15, 16), armorMat);
+      barrel.rotation.z = Math.PI / 2;
+      barrel.position.x = 0.55;
+      barrel.castShadow = true;
+      barrelGroup.add(barrel);
+
+      const muzzleBrake = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.18, 16), trackMat);
+      muzzleBrake.rotation.z = Math.PI / 2;
+      muzzleBrake.position.x = 1.12;
+      barrelGroup.add(muzzleBrake);
+
+      // แสงวาบปากกระบอกปืน (Muzzle Flash)
+      const muzzleFlash = new THREE.Mesh(
+        new THREE.SphereGeometry(0.24, 14, 14),
+        new THREE.MeshBasicMaterial({ color: 0xfef08a, transparent: true, opacity: 0.95 })
+      );
+      muzzleFlash.scale.set(1.8, 1, 1);
+      muzzleFlash.position.x = 1.32;
+      muzzleFlash.visible = false;
+      barrelGroup.add(muzzleFlash);
+
+      toysData.tank.mesh = group;
+      toysData.tank.refs = { turretGroup, barrelGroup, muzzleFlash, recoilProgress: 0 };
+      return group;
+    }
+
+    // -------------------------------------------------------------------------
+    // 5.3 โมเดลรูบิค 3x3x3 ที่เล่นและบิดได้จริง (เริ่มต้นแก้ครบทุกหน้า!)
+    // -------------------------------------------------------------------------
+    function buildRubiksCube() {
+      const group = new THREE.Group();
+      const cubies = [];
+      const spacing = 0.44;
+      const cubieSize = 0.41;
+
+      // สีมาตรฐาน 6 ด้านของรูบิค (+X ขวาแดง, -X ซ้ายส้ม, +Y บนขาว, -Y ล่างเหลือง, +Z หน้าเขียว, -Z หลังน้ำเงิน)
+      const faceColors = {
+        px: 0xef4444, // Red
+        nx: 0xf97316, // Orange
+        py: 0xffffff, // White
+        ny: 0xfacc15, // Yellow
+        pz: 0x22c55e, // Green
+        nz: 0x3b82f6, // Blue
+        inner: 0x111827 // Black Plastic Core
+      };
+
+      const stickerMaterials = {
+        px: new THREE.MeshStandardMaterial({ color: faceColors.px, roughness: 0.25 }),
+        nx: new THREE.MeshStandardMaterial({ color: faceColors.nx, roughness: 0.25 }),
+        py: new THREE.MeshStandardMaterial({ color: faceColors.py, roughness: 0.25 }),
+        ny: new THREE.MeshStandardMaterial({ color: faceColors.ny, roughness: 0.25 }),
+        pz: new THREE.MeshStandardMaterial({ color: faceColors.pz, roughness: 0.25 }),
+        nz: new THREE.MeshStandardMaterial({ color: faceColors.nz, roughness: 0.25 }),
+        inner: new THREE.MeshStandardMaterial({ color: faceColors.inner, roughness: 0.6 })
+      };
+
+      function createAllCubies() {
+        // ล้างของเก่ากรณีรีเซ็ต
+        while (group.children.length > 0) {
+          group.remove(group.children[0]);
+        }
+        cubies.length = 0;
+
+        for (let x = -1; x <= 1; x++) {
+          for (let y = -1; y <= 1; y++) {
+            for (let z = -1; z <= 1; z++) {
+              // ลำดับ materials ของ BoxGeometry: [+X, -X, +Y, -Y, +Z, -Z]
+              const mats = [
+                x === 1 ? stickerMaterials.px : stickerMaterials.inner,
+                x === -1 ? stickerMaterials.nx : stickerMaterials.inner,
+                y === 1 ? stickerMaterials.py : stickerMaterials.inner,
+                y === -1 ? stickerMaterials.ny : stickerMaterials.inner,
+                z === 1 ? stickerMaterials.pz : stickerMaterials.inner,
+                z === -1 ? stickerMaterials.nz : stickerMaterials.inner
+              ];
+
+              const cubie = new THREE.Mesh(new THREE.BoxGeometry(cubieSize, cubieSize, cubieSize), mats);
+              cubie.position.set(x * spacing, y * spacing, z * spacing);
+              cubie.castShadow = true;
+              cubie.userData.gridPos = { x, y, z };
+              cubie.userData.isCubie = true;
+              group.add(cubie);
+              cubies.push(cubie);
+            }
+          }
+        }
+      }
+
+      createAllCubies();
+
+      toysData.rubik.mesh = group;
+      toysData.rubik.refs = {
+        cubies,
+        spacing,
+        isTwisting: false,
+        resetCube: createAllCubies
+      };
+      return group;
+    }
+
+    // -------------------------------------------------------------------------
+    // 5.4 โมเดลไดโนเสาร์คอยาว (Long-neck Brachiosaurus)
+    // -------------------------------------------------------------------------
+    function buildDinosaur() {
+      const group = new THREE.Group();
+      const skinMat = new THREE.MeshStandardMaterial({ color: 0x34d399, roughness: 0.45 });
+      const bellyMat = new THREE.MeshStandardMaterial({ color: 0xa7f3d0, roughness: 0.5 });
+      const spotMat = new THREE.MeshStandardMaterial({ color: 0x059669, roughness: 0.45 });
+      const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const eyePupilMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
+
+      // ลำตัวอ้วนกลมน่ารัก
+      const torso = new THREE.Mesh(new THREE.SphereGeometry(0.58, 22, 18), skinMat);
+      torso.scale.set(1.32, 0.95, 0.88);
+      torso.position.set(0, 0.1, 0);
+      torso.castShadow = true;
+      group.add(torso);
+
+      // จุดลายบนหลัง
+      [[-0.25, 0.56, 0.18], [0.05, 0.61, -0.15], [0.28, 0.54, 0.14]].forEach((pos) => {
+        const spot = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 12), spotMat);
+        spot.position.set(pos[0], pos[1], pos[2]);
+        group.add(spot);
+      });
+
+      // ขาทั้ง 4 ข้าง
+      [
+        [0.42, -0.45, 0.3],
+        [0.42, -0.45, -0.3],
+        [-0.42, -0.45, 0.3],
+        [-0.42, -0.45, -0.3]
+      ].forEach((pos) => {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.17, 0.62, 14), skinMat);
+        leg.position.set(pos[0], pos[1], pos[2]);
+        leg.castShadow = true;
+        group.add(leg);
+      });
+
+      // หาง (จัดอยู่ใน Pivot เพื่อให้ส่ายหางได้)
+      const tailPivot = new THREE.Group();
+      tailPivot.position.set(-0.68, 0.08, 0);
+      group.add(tailPivot);
+
+      const tail = new THREE.Mesh(new THREE.ConeGeometry(0.22, 1.05, 16), skinMat);
+      tail.rotation.z = Math.PI / 2 + 0.25;
+      tail.position.set(-0.46, 0.08, 0);
+      tailPivot.add(tail);
+
+      // คอยาว + หัว (จัดอยู่ใน Neck Pivot เพื่อให้ยืดคอและพยักหน้าได้)
+      const neckPivot = new THREE.Group();
+      neckPivot.position.set(0.55, 0.35, 0);
+      group.add(neckPivot);
+
+      const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.24, 1.25, 16), skinMat);
+      neck.position.set(0.14, 0.56, 0);
+      neck.rotation.z = -0.22;
+      neck.castShadow = true;
+      neckPivot.add(neck);
+
+      // ส่วนหัว
+      const headPivot = new THREE.Group();
+      headPivot.position.set(0.28, 1.15, 0);
+      neckPivot.add(headPivot);
+
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.25, 18, 16), skinMat);
+      head.scale.set(1.35, 0.95, 0.95);
+      head.position.set(0.12, 0, 0);
+      head.castShadow = true;
+      headPivot.add(head);
+
+      // หงอนน่ารักบนหัว
+      const crest = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 12), bellyMat);
+      crest.position.set(0.05, 0.22, 0);
+      headPivot.add(crest);
+
+      // ดวงตากลมโต 2 ข้าง
+      [-0.19, 0.19].forEach((zEye) => {
+        const eyeW = new THREE.Mesh(new THREE.SphereGeometry(0.065, 12, 12), eyeWhiteMat);
+        eyeW.position.set(0.24, 0.06, zEye);
+        const eyeP = new THREE.Mesh(new THREE.SphereGeometry(0.038, 10, 10), eyePupilMat);
+        eyeP.position.set(0.28, 0.06, zEye * 1.06);
+        headPivot.add(eyeW, eyeP);
+      });
+
+      toysData.dino.mesh = group;
+      toysData.dino.refs = { neckPivot, headPivot, tailPivot, actionTimer: 0 };
+      return group;
+    }
+
+    // สร้างของเล่นทั้ง 4 ชิ้นและจัดวางลงในกล่องของขวัญ
+    Object.keys(toysData).forEach((key) => {
+      let mesh;
+      if (key === 'helicopter') mesh = buildHelicopter();
+      if (key === 'tank') mesh = buildTank();
+      if (key === 'rubik') mesh = buildRubiksCube();
+      if (key === 'dino') mesh = buildDinosaur();
+
+      const cfg = toysData[key];
+      mesh.position.copy(cfg.boxPos);
+      mesh.rotation.copy(cfg.boxRot);
+      mesh.scale.setScalar(cfg.boxScale);
+
+      // ฝังข้อมูล toyId ลงในทุก Mesh ลูกเพื่อให้ Raycaster กดเลือกได้ง่าย
+      mesh.traverse((child) => {
+        if (child.isMesh) {
+          child.userData.interactType = 'toy';
+          child.userData.toyId = key;
+        }
+      });
+
+      giftBoxGroup.add(mesh);
+    });
+
+    /**
+     * =========================================================================
+     * 6. ระบบเอฟเฟกต์อนุภาค (พลุเปิดกล่อง, กระสุนรถถัง, ตัวโน้ตไดโนเสาร์)
+     * =========================================================================
+     */
+    const activeEffects = [];
+
+    // ระเบิดประกายแสงตอนเปิดกล่อง
+    function spawnBoxCelebration() {
+      const colors = [0xf472b6, 0xfacc15, 0x38bdf8, 0xc084fc, 0xffffff];
+      for (let i = 0; i < 48; i++) {
+        const p = new THREE.Mesh(
+          new THREE.OctahedronGeometry(0.09, 0),
+          new THREE.MeshBasicMaterial({ color: colors[i % colors.length] })
+        );
+        p.position.set((Math.random() - 0.5) * 3.2, 1.8, (Math.random() - 0.5) * 2.2);
+        const vel = new THREE.Vector3(
+          (Math.random() - 0.5) * 0.14,
+          Math.random() * 0.16 + 0.08,
+          (Math.random() - 0.5) * 0.14
+        );
+        scene.add(p);
+        activeEffects.push({ mesh: p, vel, gravity: -0.004, life: 1.0, decay: 0.015 });
+      }
+    }
+
+    // ยิงลูกกระสุนปืนใหญ่รถถัง
+    function spawnTankShell() {
+      const tankRefs = toysData.tank.refs;
+      const worldPos = new THREE.Vector3();
+      tankRefs.muzzleFlash.getWorldPosition(worldPos);
+
+      const forwardDir = new THREE.Vector3(1, 0, 0);
+      forwardDir.applyQuaternion(tankRefs.muzzleFlash.getWorldQuaternion(new THREE.Quaternion())).normalize();
+
+      const shell = new THREE.Mesh(
+        new THREE.SphereGeometry(0.13, 12, 12),
+        new THREE.MeshBasicMaterial({ color: 0xfef08a })
+      );
+      shell.position.copy(worldPos);
+      scene.add(shell);
+
+      activeEffects.push({
+        mesh: shell,
+        vel: forwardDir.multiplyScalar(0.32),
+        gravity: -0.002,
+        life: 1.0,
+        decay: 0.024
+      });
+
+      // ควันขาวฟุ้งที่ปากกระบอกปืน
+      for (let i = 0; i < 10; i++) {
+        const puff = new THREE.Mesh(
+          new THREE.SphereGeometry(0.11, 8, 8),
+          new THREE.MeshBasicMaterial({ color: 0xe2e8f0, transparent: true, opacity: 0.75 })
+        );
+        puff.position.copy(worldPos);
+        const puffVel = forwardDir.clone().multiplyScalar(0.06).add(
+          new THREE.Vector3((Math.random() - 0.5) * 0.07, Math.random() * 0.07, (Math.random() - 0.5) * 0.07)
+        );
+        scene.add(puff);
+        activeEffects.push({ mesh: puff, vel: puffVel, gravity: 0.001, life: 1.0, decay: 0.03 });
+      }
+    }
+
+    // ประกายตัวโน้ตเวลาไดโนเสาร์คำราม
+    function spawnDinoSparkles() {
+      const dinoMesh = toysData.dino.mesh;
+      const basePos = new THREE.Vector3();
+      dinoMesh.getWorldPosition(basePos);
+
+      const colors = [0xf472b6, 0x34d399, 0xfacc15, 0xa78bfa];
+      for (let i = 0; i < 18; i++) {
+        const star = new THREE.Mesh(
+          new THREE.TetrahedronGeometry(0.11),
+          new THREE.MeshBasicMaterial({ color: colors[i % colors.length] })
+        );
+        star.position.set(
+          basePos.x + (Math.random() - 0.5) * 1.4,
+          basePos.y + 1.4 + Math.random() * 0.6,
+          basePos.z + (Math.random() - 0.5) * 1.4
+        );
+        scene.add(star);
+        activeEffects.push({
+          mesh: star,
+          vel: new THREE.Vector3((Math.random() - 0.5) * 0.04, 0.045 + Math.random() * 0.03, (Math.random() - 0.5) * 0.04),
+          gravity: 0,
+          life: 1.0,
+          decay: 0.018
+        });
+      }
+    }
+
+    /**
+     * =========================================================================
+     * 7. ระบบควบคุมการหมุนรูบิค 3x3x3 อย่างแม่นยำ (รองรับทั้งปุ่มและปัดบนลูกบาศก์)
+     * =========================================================================
+     */
+    function twistRubikLayer(axis, layerValue, clockwise = true) {
+      const refs = toysData.rubik.refs;
+      if (refs.isTwisting) return;
+      refs.isTwisting = true;
+      sound.playRubikTwist();
+
+      const cubeGroup = toysData.rubik.mesh;
+      const pivot = new THREE.Group();
+      cubeGroup.add(pivot);
+
+      const targetCubies = [];
+      refs.cubies.forEach((c) => {
+        if (Math.round(c.userData.gridPos[axis]) === layerValue) {
+          targetCubies.push(c);
+        }
+      });
+
+      targetCubies.forEach((c) => pivot.attach(c));
+
+      const targetAngle = (clockwise ? -1 : 1) * (Math.PI / 2);
+      const duration = 220; // ms
+      const startTime = performance.now();
+
+      function animateTwist(now) {
+        const elapsed = now - startTime;
+        const t = Math.min(elapsed / duration, 1);
+        // Smooth easeOutCubic
+        const ease = 1 - Math.pow(1 - t, 3);
+        pivot.rotation[axis] = targetAngle * ease;
+
+        if (t < 1) {
+          requestAnimationFrame(animateTwist);
+        } else {
+          pivot.rotation[axis] = targetAngle;
+          pivot.updateMatrixWorld();
+
+          targetCubies.forEach((c) => {
+            cubeGroup.attach(c);
+            // ปรับพิกัดตำแหน่งและ gridPos ให้แม่นยำป้องกันค่าคลาดเคลื่อนสะสม
+            const gx = Math.round(c.position.x / refs.spacing);
+            const gy = Math.round(c.position.y / refs.spacing);
+            const gz = Math.round(c.position.z / refs.spacing);
+            c.userData.gridPos = { x: gx, y: gy, z: gz };
+            c.position.set(gx * refs.spacing, gy * refs.spacing, gz * refs.spacing);
+          });
+
+          cubeGroup.remove(pivot);
+          refs.isTwisting = false;
+        }
+      }
+
+      requestAnimationFrame(animateTwist);
+    }
+
+    /**
+     * =========================================================================
+     * 8. สถานะของแอปพลิเคชัน, โหมดดูรายละเอียด (Inspection Mode) และ UI
+     * =========================================================================
+     */
+    const state = {
+      boxState: 'closed', // 'closed' | 'opening' | 'open'
+      openProgress: 0,
+      inspectedToyId: null, // null | 'helicopter' | 'tank' | 'rubik' | 'dino'
+      isCardModalOpen: false,
+      rubikClockwise: true
+    };
+
+    // จุดศูนย์กลางลอยตัวสำหรับโหมดสำรวจของเล่น 360 องศา
+    const inspectionHolder = new THREE.Group();
+    inspectionHolder.position.set(0, 2.35, 2.5);
+    scene.add(inspectionHolder);
+
+    const hintBanner = document.getElementById('hint-banner');
+    const toyInfoCard = document.getElementById('toy-info-card');
+    const toyInfoTitle = document.getElementById('toy-info-title');
+    const toyInfoDesc = document.getElementById('toy-info-desc');
+    const putDownBtn = document.getElementById('put-down-btn');
+    const rightActionContainer = document.getElementById('right-action-container');
+    const toyQuickBar = document.getElementById('toy-quick-bar');
+    const greetingOverlay = document.getElementById('greeting-overlay');
+    const notePaperCard = document.getElementById('note-paper-card');
+    const foldedCardBtn = document.getElementById('folded-card-btn');
+    const soundToggleBtn = document.getElementById('sound-toggle-btn');
+
+    // เปิด/ปิดเสียง
+    soundToggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isMuted = sound.toggleMute();
+      soundToggleBtn.textContent = isMuted ? '🔇' : '🔊';
+    });
+
+    // เปิดกล่องของขวัญ
+    function openGiftBox() {
+      if (state.boxState !== 'closed') return;
+      state.boxState = 'opening';
+      sound.playBoxOpen();
+      spawnBoxCelebration();
+      hintBanner.textContent = '✨ ว้าว! กดเลือกดูของเล่นข้างในกล่องได้เลย';
+      setTimeout(() => {
+        toyQuickBar.classList.add('visible');
+      }, 650);
+    }
+
+    // เปิดอ่านการ์ดอวยพร
+    function openGreetingCard() {
+      if (state.isCardModalOpen) return;
+      state.isCardModalOpen = true;
+      sound.playPaperSound(false);
+      notePaperCard.classList.remove('folding-to-corner');
+      greetingOverlay.classList.add('active');
+    }
+
+    // พับเก็บการ์ดไปมุมซ้ายบนเมื่อแตะหน้าจอ
+    function foldGreetingCardToCorner() {
+      if (!state.isCardModalOpen) return;
+      sound.playPaperSound(true);
+      notePaperCard.classList.add('folding-to-corner');
+
+      setTimeout(() => {
+        greetingOverlay.classList.remove('active');
+        state.isCardModalOpen = false;
+        foldedCardBtn.classList.remove('hidden-folded');
+        // ซ่อนการ์ดบนพื้นเพราะพับเก็บขึ้นมุมซ้ายบนแล้ว
+        floorCardGroup.visible = false;
+      }, 460);
+    }
+
+    greetingOverlay.addEventListener('click', () => {
+      foldGreetingCardToCorner();
+    });
+
+    foldedCardBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openGreetingCard();
+    });
+
+    // สร้างปุ่มแอ็กชันมุมขวาล่างตามชนิดของเล่นที่เลือก
+    function renderRightActionControls(toyId) {
+      rightActionContainer.innerHTML = '';
+
+      if (toyId === 'helicopter') {
+        const btn = document.createElement('button');
+        btn.className = 'action-main-btn';
+        const isJetOn = toysData.helicopter.refs.jetActive;
+        if (isJetOn) btn.classList.add('active-state');
+        btn.innerHTML = isJetOn ? '🔥 ปิดไอพ่น' : '🚀 เปิดไอพ่น';
+
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const refs = toysData.helicopter.refs;
+          refs.jetActive = !refs.jetActive;
+          refs.jetFlames.forEach((f) => (f.visible = refs.jetActive));
+          if (refs.jetActive) {
+            sound.startJetLoop();
+            btn.classList.add('active-state');
+            btn.innerHTML = '🔥 ปิดไอพ่น';
+          } else {
+            sound.stopJetLoop();
+            btn.classList.remove('active-state');
+            btn.innerHTML = '🚀 เปิดไอพ่น';
+          }
+        });
+        rightActionContainer.appendChild(btn);
+      }
+
+      if (toyId === 'tank') {
+        const btn = document.createElement('button');
+        btn.className = 'action-main-btn';
+        btn.innerHTML = '💥 ยิงปืนใหญ่';
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const refs = toysData.tank.refs;
+          refs.recoilProgress = 1.0;
+          refs.muzzleFlash.visible = true;
+          sound.playTankCannon();
+          spawnTankShell();
+          setTimeout(() => {
+            if (refs.muzzleFlash) refs.muzzleFlash.visible = false;
+          }, 110);
+        });
+        rightActionContainer.appendChild(btn);
+      }
+
+      if (toyId === 'rubik') {
+        const box = document.createElement('div');
+        box.className = 'rubik-controls-box';
+
+        const row1 = document.createElement('div');
+        row1.className = 'rubik-row';
+        const layers = [
+          { label: 'บน', axis: 'y', val: 1 },
+          { label: 'ล่าง', axis: 'y', val: -1 },
+          { label: 'ซ้าย', axis: 'x', val: -1 },
+          { label: 'ขวา', axis: 'x', val: 1 },
+          { label: 'หน้า', axis: 'z', val: 1 },
+          { label: 'หลัง', axis: 'z', val: -1 }
+        ];
+
+        layers.forEach((item) => {
+          const b = document.createElement('button');
+          b.className = 'rubik-mini-btn';
+          b.textContent = item.label;
+          b.addEventListener('click', (e) => {
+            e.stopPropagation();
+            twistRubikLayer(item.axis, item.val, state.rubikClockwise);
+          });
+          row1.appendChild(b);
+        });
+
+        const row2 = document.createElement('div');
+        row2.className = 'rubik-row';
+
+        const dirBtn = document.createElement('button');
+        dirBtn.className = 'rubik-mini-btn rubik-dir-btn';
+        dirBtn.textContent = state.rubikClockwise ? '↻ ตามเข็ม' : '↺ ทวนเข็ม';
+        dirBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          state.rubikClockwise = !state.rubikClockwise;
+          dirBtn.textContent = state.rubikClockwise ? '↻ ตามเข็ม' : '↺ ทวนเข็ม';
+        });
+
+        const resetBtn = document.createElement('button');
+        resetBtn.className = 'rubik-mini-btn rubik-reset-btn';
+        resetBtn.textContent = '✨ แก้เต็มหน้า';
+        resetBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (!toysData.rubik.refs.isTwisting) {
+            sound.playPop(true);
+            toysData.rubik.refs.resetCube();
+          }
+        });
+
+        row2.appendChild(dirBtn);
+        row2.appendChild(resetBtn);
+        box.appendChild(row1);
+        box.appendChild(row2);
+        rightActionContainer.appendChild(box);
+      }
+
+      if (toyId === 'dino') {
+        const btn = document.createElement('button');
+        btn.className = 'action-main-btn';
+        btn.innerHTML = '🦕 คำราม & ยืดคอ';
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          toysData.dino.refs.actionTimer = 1.6;
+          sound.playDinoRoar();
+          spawnDinoSparkles();
+        });
+        rightActionContainer.appendChild(btn);
+      }
+    }
+
+    // เข้าสู่โหมดดูรายละเอียดของเล่น (Inspection Mode)
+    function enterInspectionMode(toyId) {
+      if (state.boxState !== 'open') return;
+      if (state.inspectedToyId === toyId) return;
+
+      // หากกำลังดูชิ้นอื่นอยู่ ให้วางกลับลงกล่องก่อน
+      if (state.inspectedToyId) {
+        exitInspectionMode(true);
+      }
+
+      state.inspectedToyId = toyId;
+      sound.playPop(true);
+
+      const cfg = toysData[toyId];
+      const mesh = cfg.mesh;
+
+      // ย้ายของเล่นมาที่จุดกึ่งกลางสายตาเพื่อหมุนดู 360 องศา
+      inspectionHolder.rotation.set(0.18, -0.35, 0);
+      inspectionHolder.add(mesh);
+      mesh.position.set(0, 0, 0);
+      mesh.rotation.set(0, 0, 0);
+      mesh.scale.setScalar(cfg.inspectScale);
+
+      // ปิด OrbitControls ชั่วคราวเพื่อให้การลากนิ้ว/เมาส์หมุนตัวของเล่นได้รอบทิศทางโดยตรง
+      controls.enabled = false;
+
+      // อัปเดต UI
+      toyInfoTitle.textContent = cfg.name;
+      toyInfoDesc.textContent = cfg.desc;
+      toyInfoCard.classList.add('visible');
+      putDownBtn.classList.add('visible');
+      renderRightActionControls(toyId);
+      rightActionContainer.classList.add('visible');
+      toyQuickBar.classList.remove('visible');
+      hintBanner.textContent = toyId === 'rubik'
+        ? '🧊 ลากเพื่อหมุนดูรอบลูก หรือแตะ/ปัดบนช่องสีเพื่อบิดเล่น'
+        : '🔄 ลากนิ้วหรือเมาส์เพื่อหมุนดูรอบตัว 360 องศา';
+    }
+
+    // ออกจากโหมดดูรายละเอียด (กดปุ่ม "วางลง" มุมซ้ายล่าง)
+    function exitInspectionMode(silent = false) {
+      const toyId = state.inspectedToyId;
+      if (!toyId) return;
+
+      if (!silent) sound.playPop(false);
+
+      // หยุดเสียงไอพ่นถ้าเปิดค้างไว้
+      if (toyId === 'helicopter' && toysData.helicopter.refs.jetActive) {
+        toysData.helicopter.refs.jetActive = false;
+        toysData.helicopter.refs.jetFlames.forEach((f) => (f.visible = false));
+        sound.stopJetLoop();
+      }
+
+      const cfg = toysData[toyId];
+      const mesh = cfg.mesh;
+
+      // คืนของเล่นกลับลงในกล่องของขวัญ
+      giftBoxGroup.add(mesh);
+      mesh.position.copy(cfg.boxPos);
+      mesh.rotation.copy(cfg.boxRot);
+      mesh.scale.setScalar(cfg.boxScale);
+
+      state.inspectedToyId = null;
+      controls.enabled = true;
+
+      toyInfoCard.classList.remove('visible');
+      putDownBtn.classList.remove('visible');
+      rightActionContainer.classList.remove('visible');
+      if (!silent) {
+        toyQuickBar.classList.add('visible');
+        hintBanner.textContent = '✨ กดเลือกดูของเล่นชิ้นอื่นต่อได้เลย';
+      }
+    }
+
+    putDownBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      exitInspectionMode(false);
+    });
+
+    // ปุ่มแถบเมนูลัดด้านล่าง
+    document.querySelectorAll('.quick-toy-chip').forEach((chip) => {
+      chip.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const toyId = chip.getAttribute('data-toy');
+        enterInspectionMode(toyId);
+      });
+    });
+
+    /**
+     * =========================================================================
+     * 9. ระบบตรวจจับการคลิก/แตะ และลากหมุน (รองรับทั้งคอมพิวเตอร์และมือถือ)
+     * =========================================================================
+     */
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+
+    let pointerDownPos = { x: 0, y: 0 };
+    let lastPointerPos = { x: 0, y: 0 };
+    let isDragging = false;
+    let rubikSwipeStart = null; // เก็บข้อมูลถ้าผู้ใช้แตะลงบนช่องของรูบิค
+
+    function updatePointerNDC(clientX, clientY) {
+      pointer.x = (clientX / window.innerWidth) * 2 - 1;
+      pointer.y = -(clientY / window.innerHeight) * 2 + 1;
+    }
+
+    renderer.domElement.addEventListener('pointerdown', (e) => {
+      sound.init();
+      pointerDownPos = { x: e.clientX, y: e.clientY };
+      lastPointerPos = { x: e.clientX, y: e.clientY };
+      isDragging = true;
+      rubikSwipeStart = null;
+
+      // หากกำลังดูรูบิคอยู่ ตรวจสอบว่าผู้ใช้แตะโดนช่องรูบิคหรือไม่เพื่อรองรับการปัดบิดแถวโดยตรง
+      if (state.inspectedToyId === 'rubik' && !toysData.rubik.refs.isTwisting) {
+        updatePointerNDC(e.clientX, e.clientY);
+        raycaster.setFromCamera(pointer, camera);
+        const hits = raycaster.intersectObjects(toysData.rubik.refs.cubies, false);
+        if (hits.length > 0) {
+          rubikSwipeStart = {
+            hit: hits[0],
+            startX: e.clientX,
+            startY: e.clientY
+          };
+        }
+      }
+    });
+
+    renderer.domElement.addEventListener('pointermove', (e) => {
+      if (!isDragging) return;
+
+      const dx = e.clientX - lastPointerPos.x;
+      const dy = e.clientY - lastPointerPos.y;
+      lastPointerPos = { x: e.clientX, y: e.clientY };
+
+      // ถ้ากำลังปัดบนรูบิคเกินระยะ 22px ให้บิดแถวของรูบิคทันที!
+      if (rubikSwipeStart) {
+        const totalDx = e.clientX - rubikSwipeStart.startX;
+        const totalDy = e.clientY - rubikSwipeStart.startY;
+        if (Math.hypot(totalDx, totalDy) > 24) {
+          handleRubikDirectSwipe(rubikSwipeStart.hit, totalDx, totalDy);
+          rubikSwipeStart = null;
+          isDragging = false;
+        }
+        return;
+      }
+
+      // ถ้าอยู่ในโหมดสำรวจของเล่น ให้หมุนตัวของเล่น 360 องศาอย่างนุ่มนวล
+      if (state.inspectedToyId) {
+        inspectionHolder.rotation.y += dx * 0.011;
+        inspectionHolder.rotation.x += dy * 0.011;
+      }
+    });
+
+    renderer.domElement.addEventListener('pointerup', (e) => {
+      const moveDist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+      isDragging = false;
+
+      // หากเป็นการแตะ/คลิกสั้นๆ (ไม่ได้ลากหมุนฉาก)
+      if (moveDist < 9) {
+        // กรณีแตะสั้นๆ บนช่องรูบิคในโหมดสำรวจ -> บิดแถวนั้นให้ทันที
+        if (rubikSwipeStart && state.inspectedToyId === 'rubik') {
+          const cubie = rubikSwipeStart.hit.object;
+          const gp = cubie.userData.gridPos;
+          // เลือกบิดแถวตามตำแหน่งที่แตะ
+          if (Math.abs(gp.y) === 1) {
+            twistRubikLayer('y', gp.y, state.rubikClockwise);
+          } else if (Math.abs(gp.x) === 1) {
+            twistRubikLayer('x', gp.x, state.rubikClockwise);
+          } else {
+            twistRubikLayer('z', gp.z || 1, state.rubikClockwise);
+          }
+          rubikSwipeStart = null;
+          return;
+        }
+
+        handleSceneTap(e.clientX, e.clientY);
+      }
+      rubikSwipeStart = null;
+    });
+
+    // แปลงการปัดนิ้วบนผิวรูบิคเป็นการบิดแถวที่สอดคล้องกับมุมมองกล้อง
+    function handleRubikDirectSwipe(hit, dx, dy) {
+      const cubie = hit.object;
+      const gp = cubie.userData.gridPos;
+      const normal = hit.face.normal.clone().transformDirection(cubie.matrixWorld).normalize();
+
+      // แปลงเวกเตอร์ทิศทางการปัดบนหน้าจอ
+      const isHorizontalSwipe = Math.abs(dx) > Math.abs(dy);
+
+      if (Math.abs(normal.y) > 0.7) {
+        // แตะด้านบน/ล่างของรูบิค
+        if (isHorizontalSwipe) {
+          twistRubikLayer('z', gp.z, dx < 0);
+        } else {
+          twistRubikLayer('x', gp.x, dy > 0);
+        }
+      } else {
+        // แตะด้านข้างของรูบิค
+        if (isHorizontalSwipe) {
+          twistRubikLayer('y', gp.y, dx > 0);
+        } else {
+          if (Math.abs(normal.z) > 0.5) {
+            twistRubikLayer('x', gp.x, dy > 0);
+          } else {
+            twistRubikLayer('z', gp.z, dy < 0);
+          }
+        }
+      }
+    }
+
+    function handleSceneTap(clientX, clientY) {
+      if (state.isCardModalOpen) return;
+
+      updatePointerNDC(clientX, clientY);
+      raycaster.setFromCamera(pointer, camera);
+
+      const intersects = raycaster.intersectObjects(scene.children, true);
+      if (intersects.length === 0) return;
+
+      for (let i = 0; i < intersects.length; i++) {
+        const obj = intersects[i].object;
+        const type = obj.userData.interactType;
+
+        if (type === 'card') {
+          openGreetingCard();
+          return;
+        }
+
+        if (type === 'toy' && state.boxState === 'open' && !state.inspectedToyId) {
+          enterInspectionMode(obj.userData.toyId);
+          return;
+        }
+
+        if (type === 'giftbox') {
+          if (state.boxState === 'closed') {
+            openGiftBox();
+          }
+          return;
+        }
+      }
+    }
+
+    /**
+     * =========================================================================
+     * 10. ลูปแอนิเมชันหลักและการปรับขนาดหน้าจอ (Responsive Resize)
+     * =========================================================================
+     */
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+      const elapsed = clock.getElapsedTime();
+
+      // 1. แอนิเมชันละอองแสงระยิบระยับในห้องมืด
+      ambientSparkles.rotation.y = elapsed * 0.04;
+      ambientSparkles.position.y = Math.sin(elapsed * 0.8) * 0.12;
+
+      // 2. แอนิเมชันเปิดฝากล่องของขวัญและคลายริบบิ้น
+      if (state.boxState === 'opening') {
+        state.openProgress = Math.min(state.openProgress + delta * 1.35, 1);
+        const t = state.openProgress;
+        const ease = 1 - Math.pow(1 - t, 3);
+
+        // ริบบิ้นหดเล็กลงและหายไป
+        const ribScale = Math.max(1 - t * 2.2, 0.001);
+        ribbonBowGroup.scale.setScalar(ribScale);
+        baseRibZ.scale.set(ribScale, 1, 1);
+        baseRibX.scale.set(1, 1, ribScale);
+        if (ribScale <= 0.01) {
+          ribbonBowGroup.visible = false;
+          baseRibZ.visible = false;
+          baseRibX.visible = false;
+        }
+
+        // ฝากล่องลอยขึ้นและเอียงไปวางพักด้านหลังกล่องอย่างนุ่มนวล
+        lidGroup.position.y = (boxH - 0.08) + Math.sin(t * Math.PI) * 1.45 - ease * 1.55;
+        lidGroup.position.z = -ease * 2.85;
+        lidGroup.rotation.x = -ease * 0.85;
+
+        // ขยับมุมกล้องให้มองเห็นของเล่นทั้ง 4 ชิ้นในกล่องได้ชัดเจน
+        camera.position.lerp(new THREE.Vector3(0, 6.4, 7.8), 0.06);
+        controls.target.lerp(new THREE.Vector3(0, 0.75, 0), 0.08);
+
+        if (state.openProgress >= 1) {
+          state.boxState = 'open';
+        }
+      }
+
+      // 3. แอนิเมชันของเล่นแต่ละชิ้น
+      // 3.1 เฮลิคอปเตอร์
+      const heli = toysData.helicopter;
+      const rotorSpeed = heli.refs.jetActive ? 28 : 4.5;
+      heli.refs.mainRotor.rotation.y += delta * rotorSpeed;
+      heli.refs.tailRotor.rotation.z += delta * rotorSpeed * 1.4;
+
+      if (heli.refs.jetActive && state.inspectedToyId === 'helicopter') {
+        heli.mesh.position.y = Math.sin(elapsed * 18) * 0.06 + 0.12;
+        heli.mesh.rotation.z = Math.sin(elapsed * 14) * 0.035;
+        heli.refs.jetFlames.forEach((f, idx) => {
+          const flicker = 0.85 + Math.sin(elapsed * 45 + idx) * 0.25;
+          f.scale.set(flicker, 1, 1);
+        });
+      } else if (state.inspectedToyId === 'helicopter') {
+        heli.mesh.position.y = THREE.MathUtils.lerp(heli.mesh.position.y, 0, 0.1);
+        heli.mesh.rotation.z = THREE.MathUtils.lerp(heli.mesh.rotation.z, 0, 0.1);
+      }
+
+      // 3.2 รถถัง (แรงดีดลำกล้องปืนใหญ่)
+      const tank = toysData.tank;
+      if (tank.refs.recoilProgress > 0) {
+        tank.refs.recoilProgress = Math.max(0, tank.refs.recoilProgress - delta * 2.6);
+        const kick = Math.sin(tank.refs.recoilProgress * Math.PI);
+        tank.refs.barrelGroup.position.x = 0.45 - kick * 0.24;
+      }
+
+      // 3.3 ไดโนเสาร์คอยาว (ยืดคอ พยักหน้า ส่ายหาง)
+      const dino = toysData.dino;
+      dino.refs.tailPivot.rotation.y = Math.sin(elapsed * 3.2) * 0.18;
+      if (dino.refs.actionTimer > 0) {
+        dino.refs.actionTimer = Math.max(0, dino.refs.actionTimer - delta);
+        const wave = Math.sin((1.6 - dino.refs.actionTimer) * Math.PI * 1.25);
+        dino.refs.neckPivot.scale.y = 1 + Math.max(0, wave) * 0.35;
+        dino.refs.neckPivot.rotation.z = Math.max(0, wave) * 0.22;
+        dino.refs.headPivot.rotation.z = Math.sin(elapsed * 14) * 0.25;
+        dino.refs.tailPivot.rotation.y = Math.sin(elapsed * 16) * 0.48;
+      } else {
+        dino.refs.neckPivot.scale.y = THREE.MathUtils.lerp(dino.refs.neckPivot.scale.y, 1, 0.1);
+        dino.refs.neckPivot.rotation.z = THREE.MathUtils.lerp(dino.refs.neckPivot.rotation.z, 0, 0.1);
+        dino.refs.headPivot.rotation.z = Math.sin(elapsed * 2) * 0.05;
+      }
+
+      // 4. อัปเดตอนุภาคเอฟเฟกต์ต่างๆ
+      for (let i = activeEffects.length - 1; i >= 0; i--) {
+        const fx = activeEffects[i];
+        fx.vel.y += fx.gravity;
+        fx.mesh.position.add(fx.vel);
+        fx.mesh.rotation.x += 0.08;
+        fx.mesh.rotation.y += 0.08;
+        fx.life -= fx.decay;
+        fx.mesh.scale.setScalar(Math.max(fx.life, 0.001));
+
+        if (fx.life <= 0) {
+          scene.remove(fx.mesh);
+          activeEffects.splice(i, 1);
+        }
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    window.onload = function () {
+      animate();
+    };
+  </script>
+</body>
+</html>
